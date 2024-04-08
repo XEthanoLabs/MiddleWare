@@ -132,6 +132,9 @@
   <ItemGroup>
     <ClCompile Include="ClientB.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\common\Client\Client.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
