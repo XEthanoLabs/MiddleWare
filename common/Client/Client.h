@@ -25,7 +25,7 @@ public:
     void Connect();
     void CreateTopic(string szTopic);
     void SubscribeTopic(string szTopic);
-    void SendMessage(string szTopic, string szMessage);
+    void SendMessage(string szTopic, string szMessage, bool bHiPriority);
     void Shutdown();
 
 };
@@ -82,9 +82,6 @@ void Client::CreateTopic(string szTopic)
     // and use write(..) to send some data which is here just a string
     std::string data{ m_szUs + "|CREATE|" + szTopic + "\n" };
     auto result = boost::asio::write(m_Socket, boost::asio::buffer(data, data.length()));
-
-    // the result represents the size of the sent data
-    std::cout << pszUs << "data sent: " << data.length() << '/' << result << std::endl;
 }
 
 void Client::SubscribeTopic(string szTopic)
@@ -92,19 +89,18 @@ void Client::SubscribeTopic(string szTopic)
     // and use write(..) to send some data which is here just a string
     std::string data{ m_szUs + "|SUBSCRIBE|" + szTopic + "\n" };
     auto result = boost::asio::write(m_Socket, boost::asio::buffer(data, data.length()));
-
-    // the result represents the size of the sent data
-    std::cout << pszUs << "data sent: " << data.length() << '/' << result << std::endl;
-
 }
 
-void Client::SendMessage(string szTopic, string szMessage)
+void Client::SendMessage(string szTopic, string szMessage, bool bHiPriority)
 {
-    std::string data{ m_szUs + "|MESG|" + szTopic + "|" + szMessage + "\n"};
-    auto result = boost::asio::write(m_Socket, boost::asio::buffer(data, data.length()));
+    char chPriority = 'M';
+    if (bHiPriority)
+    {
+        chPriority = 'H';
+    }
 
-    // the result represents the size of the sent data
-    std::cout << pszUs << "data sent: " << data.length() << '/' << result << std::endl;
+    std::string data{ m_szUs + "|MESG|" + chPriority + "|" + szTopic + "|" + szMessage + "\n"};
+    auto result = boost::asio::write(m_Socket, boost::asio::buffer(data, data.length()));
 }
 
 void Client::Shutdown()

@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
     Client cl("A");
     cl.Connect();
     cl.CreateTopic("TopicA");
-    cl.SendMessageW("TopicA", "Hello from client A");
+    cl.SendMessageW("TopicA", "Hello from client A", false);
     Sleep(10000);
     cl.Shutdown();
     return 0;
