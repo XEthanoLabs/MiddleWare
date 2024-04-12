@@ -136,9 +136,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="MessageBroker.cpp" />
+    <ClCompile Include="MiscFuncs.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\DataStructs\DataStructs.h" />
+    <ClInclude Include="MiscFuncs.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

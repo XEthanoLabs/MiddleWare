@@ -7,6 +7,7 @@
 #include <memory>
 #include <boost/asio.hpp>
 #include "../common/DataStructs/DataStructs.h"
+#include "MiscFuncs.h"
 
 using namespace std;
 using namespace boost::asio;
@@ -19,6 +20,9 @@ using ip::tcp;
 interface IReceiveCallback
 {
     HRESULT virtual OnData(boost::asio::streambuf& buffer, tcp::socket& socket) = 0;
+    HRESULT virtual OnCreateTopic(string szClient, string szTopic) = 0;
+    HRESULT virtual OnSubscribeTopic(string szClient, string szTopic) = 0;
+    HRESULT virtual OnMessage(string szClient, string szTopic, string szMesg) = 0;
 };
 
 // this was created as shared ptr and we need later `this`
@@ -42,6 +46,54 @@ public:
     }
 
 private:
+    void _ProcessSingleCommand(string& szSingleLine)
+    {
+        // parse what the incoming command wanted to do.
+        list<string> szPieces;
+        SplitString(szSingleLine, '|', szPieces);
+        string szClient = szPieces.front();
+        szPieces.pop_front();
+        string szCommand = szPieces.front();
+        szPieces.pop_front();
+
+        if (szCommand == "CREATE")
+        {
+            // create a new topic. other clients can now subscribe to it
+            string szTopicName = szPieces.front();
+            m_pCallback->OnCreateTopic(szClient, szTopicName);
+        }
+        if (szCommand == "SUBSCRIBE")
+        {
+            string szTopicName = szPieces.front();
+            m_pCallback->OnSubscribeTopic(szClient, szTopicName);
+        }
+        if (szCommand == "MESG")
+        {
+            string szTopic = szPieces.front();
+            szPieces.pop_front();
+            string szMesg = szPieces.front();
+            m_pCallback->OnMessage(szClient, szTopic, szMesg);
+        }
+    }
+
+    void _ProcessReadString(string& szRead)
+    {
+        while (szRead.size())
+        {
+            string szFirst;
+            PullOutStringUntilDelimiter(szRead, '\n', szFirst);
+            if (szFirst.empty())
+            {
+                szFirst = szRead;
+            }
+            if (szFirst.empty())
+            {
+                break;
+            }
+            _ProcessSingleCommand(szFirst);
+        }
+    }
+
     void async_wait_for_request()
     {
         // since we capture `this` in the callback, we need to call shared_from_this()
@@ -57,13 +109,14 @@ private:
                 // we print the data to stdout and wait for the next request
                 if (!ec) 
                 {
-                    m_pCallback->OnData(m_buffer, m_socket);
-
                     string data
                     {
                         istreambuf_iterator<char>(&m_buffer),
                         istreambuf_iterator<char>()
                     };
+
+                    _ProcessReadString(data);
+
                     // we just print the data, you can here call other api's 
                     // or whatever the server needs to do with the received data
                     cout << data << endl;
@@ -172,6 +225,21 @@ public:
         // associate the socket with a session?
         return S_OK;
     }
+
+    HRESULT OnCreateTopic(string szClient, string szTopic)
+    {
+        return S_OK;
+    }
+
+    HRESULT OnSubscribeTopic(string szClient, string szTopic)
+    {
+        return S_OK;
+    }
+
+    HRESULT OnMessage(string szClient, string szTopic, string szMesg)
+    {
+        return S_OK;
+    }
 };
 
 int main()
@@ -181,14 +249,3 @@ int main()
     Server m_Server;
     m_Server.ReadLoop();
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file

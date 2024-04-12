@@ -3,10 +3,11 @@
 int main(int argc, char* argv[])
 {
     Sleep(1000);
-    Client c("A");
-    c.Connect();
-    c.CreateTopic("TopicA");
+    Client cl("A");
+    cl.Connect();
+    cl.CreateTopic("TopicA");
+    cl.SendMessageW("TopicA", "Hello from client A");
     Sleep(10000);
-    c.Shutdown();
+    cl.Shutdown();
     return 0;
 }

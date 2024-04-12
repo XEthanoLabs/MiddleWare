@@ -2,10 +2,11 @@
 
 int main(int argc, char* argv[])
 {
-    Sleep(1000);
-    Client c("C");
-    c.Connect();
+    Sleep(1500);
+    Client cl("C");
+    cl.Connect();
+    cl.SubscribeTopic("TopicA");
     Sleep(10000);
-    c.Shutdown();
+    cl.Shutdown();
     return 0;
 }

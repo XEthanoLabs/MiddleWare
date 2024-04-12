@@ -24,6 +24,8 @@ public:
     Client(string szName);
     void Connect();
     void CreateTopic(string szTopic);
+    void SubscribeTopic(string szTopic);
+    void SendMessage(string szTopic, string szMessage);
     void Shutdown();
 
 };
@@ -33,6 +35,7 @@ Client::Client(string szName)
     , m_Socket( m_pIoContext )
     , m_Resolver( m_pIoContext )
 {
+    m_szUs = szName;
 }
 
 void Client::Connect()
@@ -77,7 +80,27 @@ void Client::async_read_request()
 void Client::CreateTopic(string szTopic)
 {
     // and use write(..) to send some data which is here just a string
-    std::string data{ m_szUs + "CREATE " + szTopic + "\n" };
+    std::string data{ m_szUs + "|CREATE|" + szTopic + "\n" };
+    auto result = boost::asio::write(m_Socket, boost::asio::buffer(data, data.length()));
+
+    // the result represents the size of the sent data
+    std::cout << pszUs << "data sent: " << data.length() << '/' << result << std::endl;
+}
+
+void Client::SubscribeTopic(string szTopic)
+{
+    // and use write(..) to send some data which is here just a string
+    std::string data{ m_szUs + "|SUBSCRIBE|" + szTopic + "\n" };
+    auto result = boost::asio::write(m_Socket, boost::asio::buffer(data, data.length()));
+
+    // the result represents the size of the sent data
+    std::cout << pszUs << "data sent: " << data.length() << '/' << result << std::endl;
+
+}
+
+void Client::SendMessage(string szTopic, string szMessage)
+{
+    std::string data{ m_szUs + "|MESG|" + szTopic + "|" + szMessage + "\n"};
     auto result = boost::asio::write(m_Socket, boost::asio::buffer(data, data.length()));
 
     // the result represents the size of the sent data

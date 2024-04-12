@@ -18,10 +18,16 @@
     <ClCompile Include="MessageBroker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MiscFuncs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\DataStructs\DataStructs.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MiscFuncs.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
