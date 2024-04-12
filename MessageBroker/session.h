@@ -11,22 +11,29 @@ using namespace std;
 using namespace boost::asio;
 using ip::tcp;
 
+// This interface is so the session's async hook for receiving data, can call back the Server class.
+// The server implements this class, and passes the session this interface in order to call it back.
+// The server must implement each of these pure virtual methods!
 interface IReceiveCallback
 {
-    HRESULT virtual OnData(boost::asio::streambuf& buffer, boost::asio::ip::tcp::socket& socket) = 0;
-    HRESULT virtual IncomingCreateTopic(string szClient, string szTopic) = 0;
-    HRESULT virtual IncomingSubscribeTopic(string szClient, string szTopic) = 0;
-    HRESULT virtual IncomingMessage(bool bHiPriority, string szClient, string szTopic, string szMesg) = 0;
+    void virtual OnData(string& szMesg, tcp::socket& socket) = 0;
+    void virtual OnSocketClose(tcp::socket& socket) = 0;
 };
 
-class session
+// a session is a connected socket. 
+//
+// this was created as shared ptr and we need later `this`
+// therefore we need to inherit from enable_shared_from_this
+//
+class session : public enable_shared_from_this<session>
 {
 public:
 
-    basic_stream_socket<tcp> m_socket;
+    tcp::socket m_socket;
 
-    // our session holds the socket
-    session(basic_stream_socket<tcp> s, IReceiveCallback* pCallback)
+    // our session holds the socket. We pass in a socket reference, but boost makes it so only one person or thing
+    // can see the socket at a time. You must std::move it from one place to another. It's kind of stupid.
+    session(tcp::socket& s, IReceiveCallback* pCallback)
         : m_socket(std::move(s))
     {
         m_pCallback = pCallback;
@@ -34,94 +41,44 @@ public:
 
     void QueueReceiveCallback()
     {
-        cout << "session:run" << endl;
         async_wait_for_request();
-        cout << "session:run exiting" << endl;
     }
 
 private:
-    void _ProcessSingleCommand(string& szSingleLine)
-    {
-        // parse what the incoming command wanted to do.
-        list<string> szPieces;
-        SplitString(szSingleLine, '|', szPieces);
-        string szClient = szPieces.front();
-        szPieces.pop_front();
-        string szCommand = szPieces.front();
-        szPieces.pop_front();
-
-        if (szCommand == "CREATE")
-        {
-            // create a new topic. other clients can now subscribe to it
-            string szTopicName = szPieces.front();
-            m_pCallback->IncomingCreateTopic(szClient, szTopicName);
-        }
-        if (szCommand == "SUBSCRIBE")
-        {
-            string szTopicName = szPieces.front();
-            m_pCallback->IncomingSubscribeTopic(szClient, szTopicName);
-        }
-        if (szCommand == "MESG")
-        {
-            string szPriority = szPieces.front();
-            szPieces.pop_front();
-            bool bHiPriority = szPriority == "H";
-            string szTopic = szPieces.front();
-            szPieces.pop_front();
-            string szMesg = szPieces.front();
-            m_pCallback->IncomingMessage(bHiPriority, szClient, szTopic, szMesg);
-        }
-    }
-
-    void _ProcessReadString(string& szRead)
-    {
-        while (szRead.size())
-        {
-            string szFirst;
-            PullOutStringUntilDelimiter(szRead, '\n', szFirst);
-            if (szFirst.empty())
-            {
-                szFirst = szRead;
-            }
-            if (szFirst.empty())
-            {
-                break;
-            }
-            _ProcessSingleCommand(szFirst);
-        }
-    }
 
     void async_wait_for_request()
     {
         // since we capture `this` in the callback, we need to call shared_from_this()
+        auto self(shared_from_this());
+
+        // since we capture `this` in the callback, we need to call shared_from_this()
         // and now call the lambda once data arrives
         // we read a string until the null termination character
         boost::asio::async_read_until(m_socket, m_buffer, "\n",
-            [this](boost::system::error_code ec, size_t length)
+            [this, self](boost::system::error_code ec, size_t length)
             {
-                cout << "async_read_until completed " << ec << " " << length << endl;
-
-                // if there was no error, everything went well and for this demo
-                // we print the data to stdout and wait for the next request
                 if (!ec)
                 {
+                    // convert the data into a string
                     string data
                     {
                         istreambuf_iterator<char>(&m_buffer),
                         istreambuf_iterator<char>()
                     };
 
-                    _ProcessReadString(data);
+                    // tell the server we received something
+                    m_pCallback->OnData(data, m_socket);
 
-                    // we just print the data, you can here call other api's 
-                    // or whatever the server needs to do with the received data
-                    cout << data << endl;
+                    // go wait for the next thing. The 'self' thing keeps a reference count alive on us,
+                    // so we don't die.
+
                     async_wait_for_request();
                 }
                 else
                 {
-                    cout << "error or EOS: " << ec << endl;
+                    cout << "server: error or EOS: " << ec << endl;
                     m_socket.close();
+                    m_pCallback->OnSocketClose(m_socket);
                 }
             });
     }

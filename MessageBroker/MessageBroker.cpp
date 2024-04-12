@@ -23,8 +23,8 @@ class Server : public IReceiveCallback
 {
     io_service* m_pIoService;       // mandatory for using anything in asio
     tcp::acceptor* m_pAcceptor;     // accepts connections to incoming sockets on a certain port
-    list<TopicRoom> m_Topics;
-    list<ConnectedClient> m_Clients;
+    list<TopicRoom*> m_Topics;
+    list<ConnectedClient*> m_Clients;
 
     void _ServiceQueues()
     {
@@ -43,12 +43,8 @@ public:
 
     void AsyncAllowClientToJoin()
     {
-        cout << "AsyncAllowClientToJoin, threadid = " << GetCurrentThreadId() << endl;
-
         m_pAcceptor->async_accept([this](boost::system::error_code ec, tcp::socket sk)
             {
-                cout << "AsyncAllowClientToJoin got accept, thread id = " << GetCurrentThreadId() << endl;
-
                 if (!ec)
                 {
                     cout << "creating a socket on: "
@@ -59,8 +55,10 @@ public:
                     // The session will store the socket for us which maintains the connection.
                     // The 'shared_ptr" thing makes it so that the allocation of the session (normally, calling 'new')
                     // stays around until it needs to. Kind of like magic.
-                    session* pSession = new session(std::move(sk), this); // you HAVE to use move
+                    shared_ptr<session> pSession = make_shared<session>(sk, this); // you HAVE to use move
                     ConnectedClient* pCC = new ConnectedClient(pSession, "");
+                    this->m_Clients.push_back(pCC);
+
 
                     // go process all calls to this socket until the socket it closed.
                     // This is implicit multithreading?
@@ -75,8 +73,6 @@ public:
                 // so we'll call this again
                 AsyncAllowClientToJoin();
             });
-
-        cout << "AsyncAllowClientToJoin, continuing threadid = " << GetCurrentThreadId() << endl;
 
         // this happens even if the socket hasn't accepted yet. falls through and keeps going. 
         // This allows the main constructor to go on and do more stuff.
@@ -95,15 +91,16 @@ public:
             io_context::count_type count = m_pIoService->poll_one();
 
             // now go service our queues
-            for (list<TopicRoom>::iterator tr = m_Topics.begin(); tr != m_Topics.end(); tr++)
+            for (list<TopicRoom*>::iterator tr = m_Topics.begin(); tr != m_Topics.end(); tr++)
             {
-                if (tr->AnyMessagesToSend(true))
+                TopicRoom* trp = *tr;
+                if (trp->AnyMessagesToSend(true))
                 {
-                    tr->SendMessagesOfPriority(true);
+                    trp->SendMessagesOfPriority(true);
                 }
                 else
                 {
-                    tr->SendMessagesOfPriority(false);
+                    trp->SendMessagesOfPriority(false);
                 }
             }
         }
@@ -112,26 +109,157 @@ public:
         delete m_pIoService;
     }
 
-    HRESULT OnData(boost::asio::streambuf& buffer, tcp::socket& socket)
+    void IncomingSetClientName(string& szClient, tcp::socket& s )
     {
-        // associate the socket with a session?
-        return S_OK;
+        for (ConnectedClient* cc : m_Clients)
+        {
+            if (cc->m_pSession->m_socket.native_handle() == s.native_handle() )
+            {
+                // found it
+                cc->m_szClientName = szClient;
+                break;
+            }
+        }
     }
 
-    HRESULT IncomingCreateTopic(string szClient, string szTopic)
+    void IncomingCreateTopic(string& szClient, string& szTopicName)
     {
-        return S_OK;
+        TopicRoom* pTopic = new TopicRoom(szTopicName);
+        m_Topics.push_back(pTopic);
     }
 
-    HRESULT IncomingSubscribeTopic(string szClient, string szTopic)
+    TopicRoom* FindTopicRoom(string& szTopicName)
     {
-        return S_OK;
+        for (TopicRoom* ptr : m_Topics)
+        {
+            if (ptr->m_szTopic == szTopicName)
+            {
+                return ptr;
+            }
+        }
+        return nullptr;
     }
 
-    HRESULT IncomingMessage(bool bHiPriority, string szClient, string szTopic, string szMesg)
+    void IncomingSubscribeTopic(string& szClient, string& szTopicName)
     {
-        return S_OK;
+        TopicRoom* ptr = FindTopicRoom(szTopicName);
+        if (ptr == nullptr)
+        {
+            return;
+        }
+
+        ConnectedClient* pCC = GetConnectedClientFromName(szClient);
+        if (pCC == nullptr)
+        {
+            return;
+        }
+
+        ptr->AddClient(pCC);
     }
+
+    void IncomingMessage(bool bHiPri, string& szClient, string& szTopicName, string& szMesg)
+    {
+        TopicRoom* ptr = FindTopicRoom(szTopicName);
+        if (ptr == nullptr)
+        {
+            return;
+        }
+
+        ConnectedClient* pCC = GetConnectedClientFromName(szClient);
+        if (pCC == nullptr)
+        {
+            return;
+        }
+
+        MessageAndPriority mp;
+        mp.Priority = bHiPri ? 0 : 1;
+        mp.Text = szMesg;
+        ptr->AddMessageToSend(mp);
+    }
+
+    ConnectedClient* GetConnectedClientFromName(string& szClient)
+    {
+        for (ConnectedClient* cc : m_Clients)
+        {
+            if (cc->m_szClientName == szClient)
+            {
+                return cc;
+            }
+        }
+        return nullptr;
+    }
+
+    void AddConnectedClient(string& szClient)
+    {
+    }
+
+    void _ProcessSingleCommand(string& szSingleLine, tcp::socket& socket)
+    {
+        // parse what the incoming command wanted to do.
+        list<string> szPieces;
+        SplitString(szSingleLine, '|', szPieces);
+        string szClient = szPieces.front();
+        szPieces.pop_front();
+        string szCommand = szPieces.front();
+        szPieces.pop_front();
+
+        cout << "server got command from client " + szClient + ", command = " + szCommand << endl;
+
+        if (szCommand == "CONNECT")
+        {
+            IncomingSetClientName(szClient, socket);
+        }
+
+        if (szCommand == "CREATE")
+        {
+            // create a new topic. other clients can now subscribe to it
+            string szTopicName = szPieces.front();
+            IncomingCreateTopic(szClient, szTopicName);
+        }
+        if (szCommand == "SUBSCRIBE")
+        {
+            string szTopicName = szPieces.front();
+            IncomingSubscribeTopic(szClient, szTopicName);
+        }
+        if (szCommand == "MESG")
+        {
+            string szPriority = szPieces.front();
+            szPieces.pop_front();
+            bool bHiPriority = szPriority == "H";
+            string szTopic = szPieces.front();
+            szPieces.pop_front();
+            string szMesg = szPieces.front();
+            IncomingMessage(bHiPriority, szClient, szTopic, szMesg);
+        }
+    }
+
+    void _ProcessReadString(string& szRead, tcp::socket& socket)
+    {
+        while (szRead.size())
+        {
+            string szFirst;
+            PullOutStringUntilDelimiter(szRead, '\n', szFirst);
+            if (szFirst.empty())
+            {
+                szFirst = szRead;
+            }
+            if (szFirst.empty())
+            {
+                break;
+            }
+            _ProcessSingleCommand(szFirst, socket);
+        }
+    }
+
+    void OnData(string& szMesg, tcp::socket& socket)
+    {
+        _ProcessReadString(szMesg, socket);
+    }
+
+    void OnSocketClose(tcp::socket& socket)
+    {
+    }
+
 };
 
 int main()

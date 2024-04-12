@@ -13,21 +13,22 @@ using namespace std;
 using namespace boost::asio;
 using ip::tcp;
 
+// all this class does it associate a client name with a connected session (socket)
 class ConnectedClient
 {
 public:
 
-	session* m_pSession;
+	shared_ptr<session> m_pSession;
 	string m_szClientName;
 
-	ConnectedClient(session *pSession, string szClientName)
+	ConnectedClient(shared_ptr<session> pSession, string szClientName)
 	{
 		m_pSession = pSession;
 		m_szClientName = szClientName;
 	}
+
 	~ConnectedClient()
 	{
-		delete m_pSession;
 	}
 };
 

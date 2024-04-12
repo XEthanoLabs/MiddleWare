@@ -3,10 +3,10 @@
 int main(int argc, char* argv[])
 {
     Sleep(1500);
-    Client cl("C");
-    cl.Connect();
-    cl.SubscribeTopic("TopicA");
-    Sleep(10000);
-    cl.Shutdown();
+    shared_ptr<Client> cl = make_shared<Client>("C");
+    cl->Connect();
+    cl->SubscribeTopic("TopicA");
+    cl->process_io_until_done();
+    cl->Shutdown();
     return 0;
 }

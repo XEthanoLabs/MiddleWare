@@ -135,10 +135,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ConnectedClient.cpp" />
     <ClCompile Include="MessageBroker.cpp" />
     <ClCompile Include="MiscFuncs.cpp" />
-    <ClCompile Include="session.cpp" />
     <ClCompile Include="TopicChat.cpp" />
   </ItemGroup>
   <ItemGroup>
