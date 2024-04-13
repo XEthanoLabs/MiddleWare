@@ -44,6 +44,12 @@ public:
         async_wait_for_request();
     }
 
+    void Write(const string& szMesg)
+    {
+        string msg = szMesg + "\n";
+        auto result = boost::asio::write(m_socket, boost::asio::buffer(msg, msg.length()));
+    }
+
 private:
 
     void async_wait_for_request()

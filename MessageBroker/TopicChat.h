@@ -33,6 +33,7 @@ public:
 
     void AddClient(ConnectedClient* cc);
     void RemoveClient(ConnectedClient* cc);
+    bool HasAnyParticipants();
     bool AnyMessagesToSend(bool bHiPriority);
     void SendMessagesOfPriority(bool bHiPriority);
     void SendMessage(MessageAndPriority& msg);

@@ -20,6 +20,11 @@ void TopicRoom::RemoveClient(ConnectedClient* cc)
     }
 }
 
+bool TopicRoom::HasAnyParticipants()
+{
+    return m_ClientList.size() > 0;
+}
+
 bool TopicRoom::AnyMessagesToSend(bool bHiPriority)
 {
     for (const MessageAndPriority& msg : m_MessagesToSend)
@@ -38,13 +43,11 @@ bool TopicRoom::AnyMessagesToSend(bool bHiPriority)
 
 void TopicRoom::SendMessage(MessageAndPriority& msg)
 {
-    msg.Text += "\n";
-
     for (ConnectedClient* pClient : m_ClientList)
     {
         cout << "Sending message to " + pClient->m_szClientName + ", message = " + msg.Text << endl;
 
-        auto result = boost::asio::write(pClient->m_pSession->m_socket, boost::asio::buffer(msg.Text, msg.Text.length()));
+        pClient->m_pSession->Write(msg.Text);
     }
 }
 

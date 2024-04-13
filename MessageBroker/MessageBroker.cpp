@@ -128,6 +128,8 @@ public:
         m_Topics.push_back(pTopic);
     }
 
+    // if the topic doesn't exist?
+
     TopicRoom* FindTopicRoom(string& szTopicName)
     {
         for (TopicRoom* ptr : m_Topics)
@@ -140,22 +142,29 @@ public:
         return nullptr;
     }
 
+    // immediately subscribe to a topic. Don't have a priority for this
+
     void IncomingSubscribeTopic(string& szClient, string& szTopicName)
     {
-        TopicRoom* ptr = FindTopicRoom(szTopicName);
-        if (ptr == nullptr)
-        {
-            return;
-        }
-
         ConnectedClient* pCC = GetConnectedClientFromName(szClient);
         if (pCC == nullptr)
         {
             return;
         }
 
+        TopicRoom* ptr = FindTopicRoom(szTopicName);
+        if (ptr == nullptr)
+        {
+            string sz = "Server: The topic " + szTopicName + " doesn't exist.";
+            pCC->m_pSession->Write(sz);
+
+            return;
+        }
+
         ptr->AddClient(pCC);
     }
+
+    // add in coming message to list of messages to send out. We'll send it when we have time
 
     void IncomingMessage(bool bHiPri, string& szClient, string& szTopicName, string& szMesg)
     {
@@ -173,7 +182,12 @@ public:
 
         MessageAndPriority mp;
         mp.Priority = bHiPri ? 0 : 1;
-        mp.Text = szMesg;
+        mp.Text = "(" + szClient + ")" + szMesg;
+        if (bHiPri)
+        {
+            mp.Text = "!!! " + mp.Text; // mark it as high priority
+        }
+
         ptr->AddMessageToSend(mp);
     }
 
@@ -189,8 +203,16 @@ public:
         return nullptr;
     }
 
-    void AddConnectedClient(string& szClient)
+    ConnectedClient* GetConnectedClientFromSocket(tcp::socket& socket)
     {
+        for (ConnectedClient* cc : m_Clients)
+        {
+            if (cc->m_pSession->m_socket.native_handle() == socket.native_handle())
+            {
+                return cc;
+            }
+        }
+        return nullptr;
     }
 
     void _ProcessSingleCommand(string& szSingleLine, tcp::socket& socket)
@@ -233,15 +255,15 @@ public:
         }
     }
 
-    void _ProcessReadString(string& szRead, tcp::socket& socket)
+    void OnData(string& szMesg, tcp::socket& socket)
     {
-        while (szRead.size())
+        while (szMesg.size())
         {
             string szFirst;
-            PullOutStringUntilDelimiter(szRead, '\n', szFirst);
+            PullOutStringUntilDelimiter(szMesg, '\n', szFirst);
             if (szFirst.empty())
             {
-                szFirst = szRead;
+                szFirst = szMesg;
             }
             if (szFirst.empty())
             {
@@ -251,15 +273,49 @@ public:
         }
     }
 
-    void OnData(string& szMesg, tcp::socket& socket)
-    {
-        _ProcessReadString(szMesg, socket);
-    }
-
     void OnSocketClose(tcp::socket& socket)
     {
-    }
+        // the remote client lost their socket. 
+        ConnectedClient* pCC = GetConnectedClientFromSocket(socket);
+        if (!pCC)
+        {
+            // ??? now what?
+            return;
+        }
 
+        // find all topic rooms that have that client in them, and remove the client.
+        // If the topic room has no more participants, remove it
+        for (list<TopicRoom*>::iterator trp = m_Topics.begin() ; trp != m_Topics.end() ; trp++ )
+        {
+            cout << "Removing client from topic " << (*trp)->m_szTopic << endl;
+            (*trp)->RemoveClient(pCC);
+            if (!(*trp)->HasAnyParticipants())
+            {
+                cout << "Topic " + (*trp)->m_szTopic + " has no more clients. Removing." << endl;
+
+                trp = m_Topics.erase(trp);
+                if (trp == m_Topics.end())
+                {
+                    break;
+                }
+            }
+        }
+
+        // remove the connected client
+        for (list<ConnectedClient*>::iterator pcc = m_Clients.begin(); pcc != m_Clients.end(); pcc++)
+        {
+            if (*pcc == pCC)
+            {
+                // same pointer
+                pcc = m_Clients.erase(pcc);
+                if (pcc == m_Clients.end())
+                {
+                    cout << "Removing client from m_Clients list" << endl;
+                    break;
+                }
+            }
+        }
+    }
 };
 
 int main()
@@ -268,4 +324,5 @@ int main()
     WSAStartup(MAKEWORD(2, 2), &wsaData);
     Server m_Server;
     m_Server.ReadLoop();
+    WSACleanup();
 }
