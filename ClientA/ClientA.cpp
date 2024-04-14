@@ -1,23 +1,58 @@
 #include "../common/Client/Client.h"
+#include <thread>
 
 int main(int argc, char* argv[])
 {
-    Sleep(1000);
+    std::this_thread::sleep_for(1000ms);
     shared_ptr<Client> cl = make_shared<Client>("A");
     cl->Connect();
     cl->CreateTopic("TopicA");
-    Sleep(1000);
-    cout << "sending message from client A" << endl;
-    cl->SendMessageW("TopicA", "Hello from client A", false);
+    std::this_thread::sleep_for(1000ms);
+
+    string szCurrentTopic = "TopicA";
+    string szToSend;
+    int nStringCounter = 0;
+    int nLastSeenStringCounter = 0;
+
+    thread keyReadThread([&szToSend, &nStringCounter]{
+        while(true)
+        {
+            char buffer[256];
+            cin.getline( buffer, 256 );
+            szToSend = string(buffer);
+            // how to notify the main thread that we got a new string?
+            nStringCounter++;
+            if( szToSend == "q" || szToSend == "quit" )
+            {
+                break;
+            }
+        }
+
+        cout << "Exiting keyboard read thread" << endl;
+    });
+
     while (true)
     {
         bool bOk = cl->process_some_io();
         if (!bOk) break;
-        Sleep(100);
-        if (rand() % 100 == 1)
+
+        if( nLastSeenStringCounter != nStringCounter )
         {
-            cl->SendMessageW("TopicA", "Client A wants to say hello...", false);
+            // send the string the user input on the background thread
+            if( szToSend[0] == '!' )
+            {
+                // high priority
+                szToSend = szToSend.substr(1);
+                cl->SendMessage(szCurrentTopic, szToSend, true );
+            }
+            else
+            {
+                cl->SendMessage(szCurrentTopic, szToSend, false );
+            }
+            nLastSeenStringCounter = nStringCounter;
         }
+
+        std::this_thread::sleep_for(100ms);
     }
 
     cl->Shutdown();

@@ -1,8 +1,6 @@
 // MessageBroker.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <winsock2.h>
-#include <Windows.h>
 #include <iostream>
 #include <memory>
 #include <boost/asio.hpp>
@@ -14,10 +12,6 @@
 using namespace std;
 using namespace boost::asio;
 using ip::tcp;
-
-#pragma comment( lib, "winmm.lib" )
-#pragma comment( lib, "ws2_32.lib" )
-#pragma comment( lib, "libzmq-v143-mt-gd-4_3_6.lib" )
 
 class Server : public IReceiveCallback
 {
@@ -78,7 +72,7 @@ public:
         // This allows the main constructor to go on and do more stuff.
     }
 
-    void ReadLoop()
+    void SendMessagesToClientsLoop()
     {
         // m_pIoService->run();
 
@@ -320,9 +314,7 @@ public:
 
 int main()
 {
-    WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
     Server m_Server;
-    m_Server.ReadLoop();
-    WSACleanup();
+    m_Server.SendMessagesToClientsLoop();
+    return 0;
 }

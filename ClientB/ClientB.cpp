@@ -1,8 +1,9 @@
 #include "../common/Client/Client.h"
+#include <thread>
 
 int main(int argc, char* argv[])
 {
-    Sleep(1500);
+    std::this_thread::sleep_for(1000ms);
     shared_ptr<Client> cl = make_shared<Client>("B");
     cl->Connect();
     cl->SubscribeTopic("TopicA");

@@ -29,11 +29,11 @@ bool TopicRoom::AnyMessagesToSend(bool bHiPriority)
 {
     for (const MessageAndPriority& msg : m_MessagesToSend)
     {
-        if ((msg.Priority == 0) && bHiPriority)
+        if (((int)msg.Priority == 0) && bHiPriority)
         {
             return true;
         }
-        if ((msg.Priority == 1) && !bHiPriority)
+        if (((int)msg.Priority == 1) && !bHiPriority)
         {
             return true;
         }
@@ -60,6 +60,7 @@ void TopicRoom::SendMessagesOfPriority(bool bHiPriority)
 
     bool bFoundHighPriority = false;
 
+    // send all high priority messages first, if hiPriority is set on input
     for (list<MessageAndPriority>::iterator i = m_MessagesToSend.begin(); i != m_MessagesToSend.end(); i++)
     {
         if ((i->Priority == 0) && bHiPriority)
@@ -79,6 +80,7 @@ void TopicRoom::SendMessagesOfPriority(bool bHiPriority)
         return;
     }
 
+    // send all non-high priority messages, if hiPriority is NOT set
     for (list<MessageAndPriority>::iterator i = m_MessagesToSend.begin(); i != m_MessagesToSend.end(); i++)
     {
         if ((i->Priority == 1) && !bHiPriority)

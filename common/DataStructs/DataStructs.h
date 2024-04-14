@@ -1,6 +1,4 @@
 #pragma once
-#include <winsock2.h>
-#include <Windows.h>
 #include <iostream>
 #include <memory>
 #include <boost/asio.hpp>
@@ -13,6 +11,6 @@ using ip::tcp;
 struct MessageAndPriority
 {
     string Text;
-    byte Priority;
+    char Priority;
 };
 

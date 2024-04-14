@@ -1,6 +1,4 @@
 #pragma once
-#include <winsock2.h>
-#include <Windows.h>
 #include <iostream>
 #include <memory>
 #include <boost/asio.hpp>
@@ -10,6 +8,8 @@
 using namespace std;
 using namespace boost::asio;
 using ip::tcp;
+
+#define interface struct
 
 // This interface is so the session's async hook for receiving data, can call back the Server class.
 // The server implements this class, and passes the session this interface in order to call it back.

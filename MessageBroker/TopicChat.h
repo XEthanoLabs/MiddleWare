@@ -1,6 +1,4 @@
 #pragma once
-#include <winsock2.h>
-#include <Windows.h>
 #include <iostream>
 #include <memory>
 #include <boost/asio.hpp>
