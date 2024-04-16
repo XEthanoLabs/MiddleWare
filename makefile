@@ -16,12 +16,17 @@ BUILD_PATH = ./build/
 # these are the files to use for each target.
 # might be able to use some kind of wildcard?
 SRC_MB = 	MessageBroker/MessageBroker.cpp \
-			MessageBroker/MiscFuncs.cpp \
+			common/MiscFuncs.cpp \
 			MessageBroker/TopicChat.cpp
 
-SRC_CA = 	ClientA/ClientA.cpp
-SRC_CB = 	ClientB/ClientB.cpp
-SRC_CC = 	ClientC/ClientC.cpp
+SRC_CA = 	ClientA/ClientA.cpp \
+			common/MiscFuncs.cpp
+
+SRC_CB = 	ClientB/ClientB.cpp \
+			common/MiscFuncs.cpp
+
+SRC_CC = 	ClientC/ClientC.cpp \
+			common/MiscFuncs.cpp
 
 # turn CPP filenames WITH path prefixed on them, into OBJ filenames, all in the same output directory.
 # make sure you don't have multiple output OBJ files with the same name or you're toast.

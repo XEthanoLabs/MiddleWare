@@ -7,6 +7,10 @@ void TopicRoom::AddClient(shared_ptr<ConnectedClient> cc)
 
 void TopicRoom::RemoveClient(string& szClientName)
 {
+    MessageAndPriority msgClientLeft;
+    msgClientLeft.Priority = '0';
+    msgClientLeft.Text = "Client " + szClientName + " has left the topic.";
+
     for (list<shared_ptr<ConnectedClient>>::iterator i = m_ClientList.begin(); i != m_ClientList.end(); i++)
     {
         if (szClientName == i->get()->m_szClientName)
@@ -17,6 +21,10 @@ void TopicRoom::RemoveClient(string& szClientName)
                 break;
             }
         }
+        else
+        {
+            SendMessage( msgClientLeft );
+        }
     }
 }
 
@@ -25,78 +33,59 @@ bool TopicRoom::HasAnyParticipants()
     return m_ClientList.size() > 0;
 }
 
-bool TopicRoom::AnyMessagesToSend(bool bHiPriority)
-{
-    for (const MessageAndPriority& msg : m_MessagesToSend)
-    {
-        if (((int)msg.Priority == 0) && bHiPriority)
-        {
-            return true;
-        }
-        if (((int)msg.Priority == 1) && !bHiPriority)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 void TopicRoom::SendMessage(MessageAndPriority& msg)
 {
     for (shared_ptr<ConnectedClient>& pClient : m_ClientList)
     {
+        string szEncoded = msg.From + "|" + msg.Topic + "|";
+        szEncoded += msg.Priority;
+        szEncoded += "|" + msg.Text;
+
         cout << "Sending message to " + pClient->m_szClientName + ", message = " + msg.Text << endl;
 
-        pClient->Write(msg.Text);
+        pClient->Write(szEncoded);
     }
 }
 
-void TopicRoom::SendMessagesOfPriority(bool bHiPriority)
+char TopicRoom::HighestPriorityInSendQueue()
 {
     if (m_MessagesToSend.size() == 0)
     {
-        return;
+        return 0;
     }
+    
+    return m_MessagesToSend.front().Priority;
+}
 
-    bool bFoundHighPriority = false;
-
-    // send all high priority messages first, if hiPriority is set on input
-    for (list<MessageAndPriority>::iterator i = m_MessagesToSend.begin(); i != m_MessagesToSend.end(); i++)
+bool TopicRoom::SendMessagesOfPriority(char chPriority, bool& bSentSomething)
+{
+    if (m_MessageQueue.size() == 0)
     {
-        if ((i->Priority == 0) && bHiPriority)
-        {
-            bFoundHighPriority = true;
-            SendMessage(*i);
-            i = m_MessagesToSend.erase(i);
-            if (i == m_MessagesToSend.end())
-            {
-                break;
-            }
-        }
+        return false;
     }
 
-    if (bFoundHighPriority)
+    if( m_MessageQueue.top().Priority < chPriority )
     {
-        return;
+        // the very thing at the top is too low to send. 
+        return true; // more to send
     }
 
-    // send all non-high priority messages, if hiPriority is NOT set
-    for (list<MessageAndPriority>::iterator i = m_MessagesToSend.begin(); i != m_MessagesToSend.end(); i++)
+    MessageAndPriority msgTop = m_MessageQueue.top( );
+    SendMessage( msgTop );
+    m_MessageQueue.pop();
+    bSentSomething = true;
+
+    if( m_MessageQueue.empty())
     {
-        if ((i->Priority == 1) && !bHiPriority)
-        {
-            SendMessage(*i);
-            i = m_MessagesToSend.erase(i);
-            if (i == m_MessagesToSend.end())
-            {
-                break;
-            }
-        }
+        return false;
     }
+
+    return true;
 }
 
 void TopicRoom::AddMessageToSend(MessageAndPriority msg)
 {
+    m_MessageQueue.push(move(msg));
     m_MessagesToSend.push_back(msg);
 }
 

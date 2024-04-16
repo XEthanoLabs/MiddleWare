@@ -1,10 +1,15 @@
 #include <iostream>
 #include <memory>
+#include <string>
+#include <list>
+#include "../MiscFuncs.h"
 #include <boost/asio.hpp>
 
 using namespace std;
 using namespace boost::asio;
 using ip::tcp;
+
+string szEmergencyTopic = "EMERGENCY CHANNEL";
 
 // we have to derive from this in order to stay alive, per Boost's requirements. Otherwise,
 // when requesting a read request, we'll "go of scope" and accidentally die.
@@ -26,7 +31,8 @@ public:
     void Connect();
     void CreateTopic(string szTopic);
     void SubscribeTopic(string szTopic);
-    void SendMessage(string szTopic, string szMessage, bool bHiPriority);
+    void UnsubscribeTopic(string szTopic );
+    void SendMessage(string szTopic, string szMessage, char chPriority); // ASCII '0' is 'normal' and anything higher is higher
     void Shutdown();
     void process_io_until_done();
     bool process_some_io();
@@ -80,7 +86,18 @@ void Client::async_read_request()
                     istreambuf_iterator<char>()
                 };
 
-                cout << "client " + m_szUs + " received message: " + data << endl;
+                {
+                    list<string> szPieces;
+                    SplitString(data, '|', szPieces);
+                    string szClient = szPieces.front();
+                    szPieces.pop_front();
+                    string szTopic = szPieces.front();
+                    szPieces.pop_front();
+                    string szPriority = szPieces.front();
+                    szPieces.pop_front();
+                    string szMessageText = szPieces.front();
+                    cout << "> [" << szTopic << "] " << "(" << szClient << ")" << " Pri:" << szPriority << ": " << szMessageText << endl;
+                }
 
                 // read some more. This keeps the read chain alive
                 async_read_request();
@@ -109,14 +126,8 @@ void Client::SubscribeTopic(string szTopic)
     auto result = boost::asio::write(m_Socket, boost::asio::buffer(data, data.length()));
 }
 
-void Client::SendMessage(string szTopic, string szMessage, bool bHiPriority)
+void Client::SendMessage(string szTopic, string szMessage, char chPriority )
 {
-    char chPriority = 'M';
-    if (bHiPriority)
-    {
-        chPriority = 'H';
-    }
-
     std::string data{ m_szUs + "|MESG|" + chPriority + "|" + szTopic + "|" + szMessage + "\n"};
     auto result = boost::asio::write(m_Socket, boost::asio::buffer(data, data.length()));
 }

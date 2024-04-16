@@ -5,7 +5,7 @@
 #include <memory>
 #include <boost/asio.hpp>
 #include "../common/DataStructs/DataStructs.h"
-#include "MiscFuncs.h"
+#include "../common/MiscFuncs.h"
 #include "TopicChat.h"
 #include "ConnectedClient.h"
 
@@ -84,16 +84,33 @@ public:
             io_context::count_type count = m_pIoService->poll_one();
 
             // now go service our queues
-            for (list<TopicRoom*>::iterator tr = m_Topics.begin(); tr != m_Topics.end(); tr++)
+            char chSendPriority = '0' + 10; // 10 levels max?
+            bool bAnyLesser = false;
+            while( true )
             {
-                TopicRoom* trp = *tr;
-                if (trp->AnyMessagesToSend(true))
+                bool bSentSomething = false;
+
+                for (list<TopicRoom*>::iterator tr = m_Topics.begin(); tr != m_Topics.end(); tr++)
                 {
-                    trp->SendMessagesOfPriority(true);
+                    TopicRoom* trp = *tr;
+                    bAnyLesser |= trp->SendMessagesOfPriority(chSendPriority, bSentSomething);
                 }
-                else
+                if( !bSentSomething )
                 {
-                    trp->SendMessagesOfPriority(false);
+                    if( chSendPriority == '0' )
+                    {
+                        break; // all done
+                    }
+
+                    // where there any at a lower priority?
+                    if( !bAnyLesser )
+                    {
+                        break; // nope. all done.
+                    }
+
+                    // yep. Lower the priority and try some more
+                    chSendPriority--;
+                    bAnyLesser = false;
                 }
             }
         }
@@ -119,6 +136,13 @@ public:
     {
         TopicRoom* pTopic = new TopicRoom(szTopicName);
         m_Topics.push_back(pTopic);
+
+        MessageAndPriority msg;
+        msg.From = "Server";
+        msg.Topic = szTopicName;
+        msg.Priority = '0';
+        msg.Text = "Client " + szClient + " created topic.";
+        pTopic->AddMessageToSend( msg );
     }
 
     // if the topic doesn't exist?
@@ -157,9 +181,29 @@ public:
         ptr->AddClient(pCC);
     }
 
+    void IncomingUnsubscribeTopic(string& szClient, string& szTopicName)
+    {
+        shared_ptr<ConnectedClient>& pCC = GetConnectedClientFromName(szClient);
+        if (pCC == nullptr)
+        {
+            return;
+        }
+
+        TopicRoom* ptr = FindTopicRoom(szTopicName);
+        if (ptr == nullptr)
+        {
+            string sz = "Server: The topic " + szTopicName + " doesn't exist.";
+            pCC->Write(sz);
+
+            return;
+        }
+
+        ptr->RemoveClient(szClient);
+    }
+
     // add in coming message to list of messages to send out. We'll send it when we have time
 
-    void IncomingMessage(bool bHiPri, string& szClient, string& szTopicName, string& szMesg)
+    void IncomingMessage(char chPriority, string& szClient, string& szTopicName, string& szMesg)
     {
         TopicRoom* ptr = FindTopicRoom(szTopicName);
         if (ptr == nullptr)
@@ -168,13 +212,10 @@ public:
         }
 
         MessageAndPriority mp;
-        mp.Priority = bHiPri ? 0 : 1;
-        mp.Text = "(" + szClient + ")" + szMesg;
-        if (bHiPri)
-        {
-            mp.Text = "!!! " + mp.Text; // mark it as high priority
-        }
-
+        mp.From = szClient;
+        mp.Topic = szTopicName;
+        mp.Priority = chPriority;
+        mp.Text = szMesg;
         ptr->AddMessageToSend(mp);
     }
 
@@ -230,15 +271,20 @@ public:
             string szTopicName = szPieces.front();
             IncomingSubscribeTopic(szClient, szTopicName);
         }
+        if( szCommand == "UNSUBSCRIBE")
+        {
+            string szTopicName = szPieces.front();
+            IncomingUnsubscribeTopic( szClient, szTopicName);
+        }
         if (szCommand == "MESG")
         {
             string szPriority = szPieces.front();
             szPieces.pop_front();
-            bool bHiPriority = szPriority == "H";
+            char chPriority = szPriority[0];
             string szTopic = szPieces.front();
             szPieces.pop_front();
             string szMesg = szPieces.front();
-            IncomingMessage(bHiPriority, szClient, szTopic, szMesg);
+            IncomingMessage(chPriority, szClient, szTopic, szMesg);
         }
     }
 
@@ -265,6 +311,8 @@ public:
         // the remote client lost their socket. 
         shared_ptr<ConnectedClient>& pCC = GetConnectedClientFromSocket(socket);
 
+        cout << "Server lost connection to client " << pCC->m_szClientName << endl;
+        
         // find all topic rooms that have that client in them, and remove the client.
         // If the topic room has no more participants, remove it
         for (list<TopicRoom*>::iterator trp = m_Topics.begin() ; trp != m_Topics.end() ; trp++ )

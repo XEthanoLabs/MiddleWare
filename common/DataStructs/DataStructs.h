@@ -10,7 +10,14 @@ using ip::tcp;
 
 struct MessageAndPriority
 {
+    string From;
+    string Topic;
     string Text;
     char Priority;
+
+    bool operator< ( const MessageAndPriority& other )
+    {
+        return this->Priority < other.Priority;
+    }
 };
 

@@ -3,7 +3,7 @@
 #include <memory>
 #include <boost/asio.hpp>
 #include "../common/DataStructs/DataStructs.h"
-#include "MiscFuncs.h"
+#include "../common/MiscFuncs.h"
 
 using namespace std;
 using namespace boost::asio;
@@ -11,8 +11,8 @@ using ip::tcp;
 
 #define interface struct
 
-// This interface is so the session's async hook for receiving data, can call back the Server class.
-// The server implements this class, and passes the session this interface in order to call it back.
+// This interface is so the ConnectedClient's async hook for receiving data, can call back the Server class.
+// The server implements this class, and passes the ConnectedClient this interface in order to call it back.
 // The server must implement each of these pure virtual methods!
 interface IReceiveCallback
 {
@@ -20,7 +20,7 @@ interface IReceiveCallback
     void virtual OnSocketClose(tcp::socket& socket) = 0;
 };
 
-// a session is a connected socket. 
+// a ConnectedClient is a connected socket. 
 //
 // this was created as shared ptr and we need later `this`
 // therefore we need to inherit from enable_shared_from_this
@@ -32,7 +32,7 @@ public:
     tcp::socket m_socket;
 	string m_szClientName;
 
-    // our session holds the socket. We pass in a socket reference, but boost makes it so only one person or thing
+    // our ConnectedClient holds the socket. We pass in a socket reference, but boost makes it so only one person or thing
     // can see the socket at a time. You must std::move it from one place to another. It's kind of stupid.
     ConnectedClient(tcp::socket& s, IReceiveCallback* pCallback)
         : m_socket(std::move(s))
@@ -90,7 +90,6 @@ private:
             });
     }
 
-private:
     boost::asio::streambuf m_buffer;
     IReceiveCallback* m_pCallback;
 };

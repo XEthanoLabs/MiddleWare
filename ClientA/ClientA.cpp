@@ -1,15 +1,15 @@
 #include "../common/Client/Client.h"
 #include <thread>
 
+
 int main(int argc, char* argv[])
 {
     std::this_thread::sleep_for(1000ms);
     shared_ptr<Client> cl = make_shared<Client>("A");
     cl->Connect();
-    cl->CreateTopic("TopicA");
+    cl->CreateTopic(szEmergencyTopic);
     std::this_thread::sleep_for(1000ms);
 
-    string szCurrentTopic = "TopicA";
     string szToSend;
     int nStringCounter = 0;
     int nLastSeenStringCounter = 0;
@@ -31,6 +31,8 @@ int main(int argc, char* argv[])
         cout << "Exiting keyboard read thread" << endl;
     });
 
+    string szCurrentTopic = szEmergencyTopic;
+
     while (true)
     {
         bool bOk = cl->process_some_io();
@@ -43,11 +45,11 @@ int main(int argc, char* argv[])
             {
                 // high priority
                 szToSend = szToSend.substr(1);
-                cl->SendMessage(szCurrentTopic, szToSend, true );
+                cl->SendMessage(szCurrentTopic, szToSend, '1' );
             }
             else
             {
-                cl->SendMessage(szCurrentTopic, szToSend, false );
+                cl->SendMessage(szCurrentTopic, szToSend, '0' );
             }
             nLastSeenStringCounter = nStringCounter;
         }
