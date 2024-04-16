@@ -6,7 +6,6 @@
 
 #include "../common/DataStructs/DataStructs.h"
 #include "ConnectedClient.h"
-#include "session.h"
 
 using namespace std;
 using namespace boost::asio;
@@ -26,11 +25,11 @@ public:
         m_szTopic = szTopic;
     }
 
-    list<ConnectedClient*> m_ClientList;    // who is connected
+    list<shared_ptr<ConnectedClient>> m_ClientList;    // who is connected
     list<MessageAndPriority> m_MessagesToSend;
 
-    void AddClient(ConnectedClient* cc);
-    void RemoveClient(ConnectedClient* cc);
+    void AddClient(shared_ptr<ConnectedClient> cc);
+    void RemoveClient(string& szClientName);
     bool HasAnyParticipants();
     bool AnyMessagesToSend(bool bHiPriority);
     void SendMessagesOfPriority(bool bHiPriority);

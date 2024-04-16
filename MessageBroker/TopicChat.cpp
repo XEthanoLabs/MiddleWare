@@ -1,15 +1,15 @@
 #include "TopicChat.h"
 
-void TopicRoom::AddClient(ConnectedClient* cc)
+void TopicRoom::AddClient(shared_ptr<ConnectedClient> cc)
 {
     m_ClientList.push_back(cc);
 }
 
-void TopicRoom::RemoveClient(ConnectedClient* cc)
+void TopicRoom::RemoveClient(string& szClientName)
 {
-    for (list<ConnectedClient*>::iterator i = m_ClientList.begin(); i != m_ClientList.end(); i++)
+    for (list<shared_ptr<ConnectedClient>>::iterator i = m_ClientList.begin(); i != m_ClientList.end(); i++)
     {
-        if (cc->m_szClientName == (*i)->m_szClientName)
+        if (szClientName == i->get()->m_szClientName)
         {
             i = m_ClientList.erase(i);
             if (i == m_ClientList.end())
@@ -43,11 +43,11 @@ bool TopicRoom::AnyMessagesToSend(bool bHiPriority)
 
 void TopicRoom::SendMessage(MessageAndPriority& msg)
 {
-    for (ConnectedClient* pClient : m_ClientList)
+    for (shared_ptr<ConnectedClient>& pClient : m_ClientList)
     {
         cout << "Sending message to " + pClient->m_szClientName + ", message = " + msg.Text << endl;
 
-        pClient->m_pSession->Write(msg.Text);
+        pClient->Write(msg.Text);
     }
 }
 

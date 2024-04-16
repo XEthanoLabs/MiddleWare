@@ -7,7 +7,7 @@
 #include "../common/DataStructs/DataStructs.h"
 #include "MiscFuncs.h"
 #include "TopicChat.h"
-#include "session.h"
+#include "ConnectedClient.h"
 
 using namespace std;
 using namespace boost::asio;
@@ -18,7 +18,7 @@ class Server : public IReceiveCallback
     io_service* m_pIoService;       // mandatory for using anything in asio
     tcp::acceptor* m_pAcceptor;     // accepts connections to incoming sockets on a certain port
     list<TopicRoom*> m_Topics;
-    list<ConnectedClient*> m_Clients;
+    list<shared_ptr<ConnectedClient>> m_Clients;
 
     void _ServiceQueues()
     {
@@ -49,14 +49,13 @@ public:
                     // The session will store the socket for us which maintains the connection.
                     // The 'shared_ptr" thing makes it so that the allocation of the session (normally, calling 'new')
                     // stays around until it needs to. Kind of like magic.
-                    shared_ptr<session> pSession = make_shared<session>(sk, this); // you HAVE to use move
-                    ConnectedClient* pCC = new ConnectedClient(pSession, "");
+                    shared_ptr<ConnectedClient> pCC = make_shared<ConnectedClient>(sk, this); // you HAVE to use move
                     this->m_Clients.push_back(pCC);
 
 
                     // go process all calls to this socket until the socket it closed.
                     // This is implicit multithreading?
-                    pSession->QueueReceiveCallback();
+                    pCC->QueueReceiveCallback();
                 }
                 else
                 {
@@ -105,9 +104,9 @@ public:
 
     void IncomingSetClientName(string& szClient, tcp::socket& s )
     {
-        for (ConnectedClient* cc : m_Clients)
+        for (shared_ptr<ConnectedClient> cc : m_Clients)
         {
-            if (cc->m_pSession->m_socket.native_handle() == s.native_handle() )
+            if (cc->m_socket.native_handle() == s.native_handle() )
             {
                 // found it
                 cc->m_szClientName = szClient;
@@ -140,7 +139,7 @@ public:
 
     void IncomingSubscribeTopic(string& szClient, string& szTopicName)
     {
-        ConnectedClient* pCC = GetConnectedClientFromName(szClient);
+        shared_ptr<ConnectedClient>& pCC = GetConnectedClientFromName(szClient);
         if (pCC == nullptr)
         {
             return;
@@ -150,7 +149,7 @@ public:
         if (ptr == nullptr)
         {
             string sz = "Server: The topic " + szTopicName + " doesn't exist.";
-            pCC->m_pSession->Write(sz);
+            pCC->Write(sz);
 
             return;
         }
@@ -168,12 +167,6 @@ public:
             return;
         }
 
-        ConnectedClient* pCC = GetConnectedClientFromName(szClient);
-        if (pCC == nullptr)
-        {
-            return;
-        }
-
         MessageAndPriority mp;
         mp.Priority = bHiPri ? 0 : 1;
         mp.Text = "(" + szClient + ")" + szMesg;
@@ -185,28 +178,28 @@ public:
         ptr->AddMessageToSend(mp);
     }
 
-    ConnectedClient* GetConnectedClientFromName(string& szClient)
+    shared_ptr<ConnectedClient>& GetConnectedClientFromName(string& szClient)
     {
-        for (ConnectedClient* cc : m_Clients)
+        for (shared_ptr<ConnectedClient>& cc : m_Clients)
         {
             if (cc->m_szClientName == szClient)
             {
                 return cc;
             }
         }
-        return nullptr;
+        throw std::invalid_argument("No matching connecting client");
     }
 
-    ConnectedClient* GetConnectedClientFromSocket(tcp::socket& socket)
+    shared_ptr<ConnectedClient>& GetConnectedClientFromSocket(tcp::socket& socket)
     {
-        for (ConnectedClient* cc : m_Clients)
+        for (shared_ptr<ConnectedClient>& cc : m_Clients)
         {
-            if (cc->m_pSession->m_socket.native_handle() == socket.native_handle())
+            if (cc->m_socket.native_handle() == socket.native_handle())
             {
                 return cc;
             }
         }
-        return nullptr;
+        throw std::invalid_argument("No matching connecting client");
     }
 
     void _ProcessSingleCommand(string& szSingleLine, tcp::socket& socket)
@@ -270,19 +263,14 @@ public:
     void OnSocketClose(tcp::socket& socket)
     {
         // the remote client lost their socket. 
-        ConnectedClient* pCC = GetConnectedClientFromSocket(socket);
-        if (!pCC)
-        {
-            // ??? now what?
-            return;
-        }
+        shared_ptr<ConnectedClient>& pCC = GetConnectedClientFromSocket(socket);
 
         // find all topic rooms that have that client in them, and remove the client.
         // If the topic room has no more participants, remove it
         for (list<TopicRoom*>::iterator trp = m_Topics.begin() ; trp != m_Topics.end() ; trp++ )
         {
             cout << "Removing client from topic " << (*trp)->m_szTopic << endl;
-            (*trp)->RemoveClient(pCC);
+            (*trp)->RemoveClient(pCC->m_szClientName);
             if (!(*trp)->HasAnyParticipants())
             {
                 cout << "Topic " + (*trp)->m_szTopic + " has no more clients. Removing." << endl;
@@ -296,7 +284,7 @@ public:
         }
 
         // remove the connected client
-        for (list<ConnectedClient*>::iterator pcc = m_Clients.begin(); pcc != m_Clients.end(); pcc++)
+        for (list<shared_ptr<ConnectedClient>>::iterator pcc = m_Clients.begin(); pcc != m_Clients.end(); pcc++)
         {
             if (*pcc == pCC)
             {
