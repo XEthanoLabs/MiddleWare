@@ -3,6 +3,7 @@
         "system_error": "cpp",
         "thread": "cpp",
         "iostream": "cpp",
-        "stdexcept": "cpp"
+        "stdexcept": "cpp",
+        "new": "cpp"
     }
 }

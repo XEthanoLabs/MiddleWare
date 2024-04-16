@@ -2,7 +2,7 @@
 
 int main()
 {
-    Server m_Server;
-    m_Server.SendMessagesToClientsLoop();
+    MessageBroker server;
+    server.SendMessagesToClientsLoop();
     return 0;
 }

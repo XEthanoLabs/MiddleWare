@@ -17,7 +17,9 @@ BUILD_PATH = ./build/
 # might be able to use some kind of wildcard?
 SRC_MB = 	MessageBroker/MessageBroker.cpp \
 			MessageBroker/TopicChat.cpp \
-			common/MiscFuncs.cpp
+			MessageBroker/ConnectedClient.cpp \
+			common/MiscFuncs.cpp \
+			Main.cpp
 
 SRC_CA = 	ClientA/ClientA.cpp \
 			common/MiscFuncs.cpp

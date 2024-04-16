@@ -6,8 +6,8 @@
 #include <list>
 #include <queue>
 
-#include "../common/DataStructs/DataStructs.h"
-#include "ConnectedClient.h"
+#include "../common/DataStructs/DataStructs.h"  // the messages
+#include "ConnectedClient.h"                    // the clients
 
 using namespace std;
 using namespace boost::asio;
@@ -24,7 +24,7 @@ struct MessageLess
     }
 };
 
-class TopicRoom
+class TopicChat
 {
     void SendMessage(MessageAndPriority& msg);
 
@@ -32,7 +32,7 @@ public:
 
     string m_szTopic;
 
-    TopicRoom(string& szTopic)
+    TopicChat(string& szTopic)
     {
         m_szTopic = szTopic;
     }

@@ -1,11 +1,11 @@
 #include "TopicChat.h"
 
-void TopicRoom::AddClient(shared_ptr<ConnectedClient> cc)
+void TopicChat::AddClient(shared_ptr<ConnectedClient> cc)
 {
     m_ClientList.push_back(cc);
 }
 
-void TopicRoom::RemoveClient(string& szClientName)
+void TopicChat::RemoveClient(string& szClientName)
 {
     MessageAndPriority msgClientLeft;
     msgClientLeft.Priority = '0';
@@ -28,12 +28,12 @@ void TopicRoom::RemoveClient(string& szClientName)
     }
 }
 
-bool TopicRoom::HasAnyParticipants()
+bool TopicChat::HasAnyParticipants()
 {
     return m_ClientList.size() > 0;
 }
 
-void TopicRoom::SendMessage(MessageAndPriority& msg)
+void TopicChat::SendMessage(MessageAndPriority& msg)
 {
     for (shared_ptr<ConnectedClient>& pClient : m_ClientList)
     {
@@ -47,7 +47,7 @@ void TopicRoom::SendMessage(MessageAndPriority& msg)
     }
 }
 
-char TopicRoom::HighestPriorityInSendQueue()
+char TopicChat::HighestPriorityInSendQueue()
 {
     if (m_MessageQueue.size() == 0)
     {
@@ -57,7 +57,7 @@ char TopicRoom::HighestPriorityInSendQueue()
     return m_MessageQueue.top().Priority;
 }
 
-bool TopicRoom::SendMessagesOfPriority(char chPriority, bool& bSentSomething)
+bool TopicChat::SendMessagesOfPriority(char chPriority, bool& bSentSomething)
 {
     if (m_MessageQueue.size() == 0)
     {
@@ -83,7 +83,7 @@ bool TopicRoom::SendMessagesOfPriority(char chPriority, bool& bSentSomething)
     return true;
 }
 
-void TopicRoom::AddMessageToSend(MessageAndPriority msg)
+void TopicChat::AddMessageToSend(MessageAndPriority msg)
 {
     m_MessageQueue.push(move(msg));
 }
