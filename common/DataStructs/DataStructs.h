@@ -13,7 +13,7 @@ struct MessageAndPriority
     string From;
     string Topic;
     string Text;
-    char Priority;
+    char Priority; // lowest priority is ASCII '0'. It goes up from there. '6' would be 6 levels higher than '0'. 
 
     bool operator< ( const MessageAndPriority& other )
     {

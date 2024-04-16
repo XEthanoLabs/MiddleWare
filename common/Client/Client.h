@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <memory>
 #include <string>
@@ -9,7 +11,7 @@ using namespace std;
 using namespace boost::asio;
 using ip::tcp;
 
-string szEmergencyTopic = "EMERGENCY CHANNEL";
+string szEmergencyTopic = "EMERGENCY";
 
 // we have to derive from this in order to stay alive, per Boost's requirements. Otherwise,
 // when requesting a read request, we'll "go of scope" and accidentally die.

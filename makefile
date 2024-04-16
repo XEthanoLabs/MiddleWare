@@ -16,8 +16,8 @@ BUILD_PATH = ./build/
 # these are the files to use for each target.
 # might be able to use some kind of wildcard?
 SRC_MB = 	MessageBroker/MessageBroker.cpp \
-			common/MiscFuncs.cpp \
-			MessageBroker/TopicChat.cpp
+			MessageBroker/TopicChat.cpp \
+			common/MiscFuncs.cpp
 
 SRC_CA = 	ClientA/ClientA.cpp \
 			common/MiscFuncs.cpp
@@ -30,36 +30,42 @@ SRC_CC = 	ClientC/ClientC.cpp \
 
 # turn CPP filenames WITH path prefixed on them, into OBJ filenames, all in the same output directory.
 # make sure you don't have multiple output OBJ files with the same name or you're toast.
-OBJ_MB =	$(addprefix $(OBJ_PATH), $(notdir $(SRC_MB:.cpp=.obj)))
-OBJ_CA =	$(addprefix $(OBJ_PATH), $(notdir $(SRC_CA:.cpp=.obj)))
-OBJ_CB =	$(addprefix $(OBJ_PATH), $(notdir $(SRC_CB:.cpp=.obj)))
-OBJ_CC =	$(addprefix $(OBJ_PATH), $(notdir $(SRC_CC:.cpp=.obj)))
+OBJ_MB =	$(addprefix $(OBJ_PATH), $(notdir $(SRC_MB:.cpp=.o)))
+OBJ_CA =	$(addprefix $(OBJ_PATH), $(notdir $(SRC_CA:.cpp=.o)))
+OBJ_CB =	$(addprefix $(OBJ_PATH), $(notdir $(SRC_CB:.cpp=.o)))
+OBJ_CC =	$(addprefix $(OBJ_PATH), $(notdir $(SRC_CC:.cpp=.o)))
 
 # get OBJ files by compiling CPP files
-$(OBJ_PATH)%.obj:MessageBroker/%.cpp
+$(OBJ_PATH)%.o:MessageBroker/%.cpp
+	mkdir -p $(OBJ_PATH)
+	$(CC) $(CF) $(CFI) -c $< -o $@
+
+# common path
+$(OBJ_PATH)%.o:common/%.cpp
+	mkdir -p $(OBJ_PATH)
+	$(CC) $(CF) $(CFI) -c $< -o $@
+
+
+# get OBJ files by compiling CPP files
+$(OBJ_PATH)%.o:ClientA/%.cpp
 	mkdir -p $(OBJ_PATH)
 	$(CC) $(CF) $(CFI) -c $< -o $@
 
 # get OBJ files by compiling CPP files
-$(OBJ_PATH)%.obj:ClientA/%.cpp
+$(OBJ_PATH)%.o:ClientB/%.cpp
 	mkdir -p $(OBJ_PATH)
 	$(CC) $(CF) $(CFI) -c $< -o $@
 
 # get OBJ files by compiling CPP files
-$(OBJ_PATH)%.obj:ClientB/%.cpp
+$(OBJ_PATH)%.o:ClientC/%.cpp
 	mkdir -p $(OBJ_PATH)
 	$(CC) $(CF) $(CFI) -c $< -o $@
 
-# get OBJ files by compiling CPP files
-$(OBJ_PATH)%.obj:ClientC/%.cpp
-	mkdir -p $(OBJ_PATH)
-	$(CC) $(CF) $(CFI) -c $< -o $@
+all: $(NAME_MESSAGEBROKER) $(NAME_CLIENTA) $(NAME_CLIENTB) $(NAME_CLIENTC)
 
 clean:
 	rm -rf $(OBJ_PATH)
 	rm -rf $(BUILD_PATH)
-
-all: $(NAME_MESSAGEBROKER) $(NAME_CLIENTA) $(NAME_CLIENTB) $(NAME_CLIENTC)
 
 # get EXE files by combining OBJ  files
 $(NAME_MESSAGEBROKER):	$(OBJ_MB)

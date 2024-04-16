@@ -49,12 +49,12 @@ void TopicRoom::SendMessage(MessageAndPriority& msg)
 
 char TopicRoom::HighestPriorityInSendQueue()
 {
-    if (m_MessagesToSend.size() == 0)
+    if (m_MessageQueue.size() == 0)
     {
         return 0;
     }
     
-    return m_MessagesToSend.front().Priority;
+    return m_MessageQueue.top().Priority;
 }
 
 bool TopicRoom::SendMessagesOfPriority(char chPriority, bool& bSentSomething)
@@ -86,6 +86,5 @@ bool TopicRoom::SendMessagesOfPriority(char chPriority, bool& bSentSomething)
 void TopicRoom::AddMessageToSend(MessageAndPriority msg)
 {
     m_MessageQueue.push(move(msg));
-    m_MessagesToSend.push_back(msg);
 }
 

@@ -1,24 +1,17 @@
 #pragma once
+
 #include <iostream>
 #include <memory>
 #include <boost/asio.hpp>
 #include "../common/DataStructs/DataStructs.h"
 #include "../common/MiscFuncs.h"
+#include "MessageBroker.h"
 
 using namespace std;
 using namespace boost::asio;
 using ip::tcp;
 
 #define interface struct
-
-// This interface is so the ConnectedClient's async hook for receiving data, can call back the Server class.
-// The server implements this class, and passes the ConnectedClient this interface in order to call it back.
-// The server must implement each of these pure virtual methods!
-interface IReceiveCallback
-{
-    void virtual OnData(string& szMesg, tcp::socket& socket) = 0;
-    void virtual OnSocketClose(tcp::socket& socket) = 0;
-};
 
 // a ConnectedClient is a connected socket. 
 //
@@ -31,13 +24,14 @@ public:
 
     tcp::socket m_socket;
 	string m_szClientName;
+    Server* m_pServer;
 
     // our ConnectedClient holds the socket. We pass in a socket reference, but boost makes it so only one person or thing
     // can see the socket at a time. You must std::move it from one place to another. It's kind of stupid.
-    ConnectedClient(tcp::socket& s, IReceiveCallback* pCallback)
+    ConnectedClient(tcp::socket& s, Server* pServer)
         : m_socket(std::move(s))
     {
-        m_pCallback = pCallback;
+        m_pServer = pServer;
     }
 
     void QueueReceiveCallback()
@@ -74,7 +68,7 @@ private:
                     };
 
                     // tell the server we received something
-                    m_pCallback->OnData(data, m_socket);
+                    m_pServer->OnData(data, m_socket);
 
                     // go wait for the next thing. The 'self' thing keeps a reference count alive on us,
                     // so we don't die.
@@ -85,11 +79,10 @@ private:
                 {
                     cout << "server: error or EOS: " << ec << endl;
                     m_socket.close();
-                    m_pCallback->OnSocketClose(m_socket);
+                    m_pServer->OnSocketClose(m_socket);
                 }
             });
     }
 
     boost::asio::streambuf m_buffer;
-    IReceiveCallback* m_pCallback;
 };

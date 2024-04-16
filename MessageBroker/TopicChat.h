@@ -1,4 +1,5 @@
 #pragma once
+
 #include <iostream>
 #include <memory>
 #include <boost/asio.hpp>
@@ -38,7 +39,6 @@ public:
 
     list<shared_ptr<ConnectedClient>> m_ClientList;    // who is connected
     priority_queue<MessageAndPriority, vector<MessageAndPriority>, MessageLess> m_MessageQueue;
-    list<MessageAndPriority> m_MessagesToSend;
 
     void AddClient(shared_ptr<ConnectedClient> cc);
     void RemoveClient(string& szClientName);
