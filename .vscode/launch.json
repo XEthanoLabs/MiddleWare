@@ -1,0 +1,96 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "LaunchMessageBroker",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/MessageBroker.exe",
+            "MIMode": "gdb",
+            "cwd": "${workspaceFolder}/build/",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "LaunchClientA",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/ClientA.exe",
+            "MIMode": "gdb",
+            "cwd": "${workspaceFolder}/build/",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "LaunchClientB",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/ClientB.exe",
+            "MIMode": "gdb",
+            "cwd": "${workspaceFolder}/build/",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "LaunchClientC",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/ClientC.exe",
+            "MIMode": "gdb",
+            "cwd": "${workspaceFolder}/build/",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Everything",
+            "configurations": ["LaunchMessageBroker", "LaunchClientA", "LaunchClientB", "LaunchClientC"],
+            "preLaunchTask": "makeall",
+            "stopAll": false
+        }
+    ]
+}
